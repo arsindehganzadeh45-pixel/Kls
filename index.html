@@ -188,7 +188,7 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
 </head>
 <body>
 
-<!-- صفحه عمومی اشتراک (بدون خطای ساب) -->
+<!-- صفحه عمومی اشتراک (بدون دکمه ورود به پنل) -->
 <div id="publicSubView">
   <div class="pub-card">
     <div style="text-align:center;margin-bottom:14px">
@@ -202,7 +202,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
       <button type="button" class="btn btn-navy" style="flex:1;justify-content:center" id="pubBtnDl">⬇️ دانلود فایل CONF</button>
       <button type="button" class="btn btn-sky" style="flex:1;justify-content:center" id="pubBtnCopy">📋 کپی کانفیگ</button>
     </div>
-    <button type="button" class="btn btn-outline" style="width:100%;justify-content:center;margin-top:10px" onclick="location.href=location.pathname">🔙 ورود به پنل</button>
   </div>
 </div>
 
@@ -264,7 +263,7 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
           <div class="form-grid">
             <div class="field">
               <label>نام کاربر *</label>
-              <input type="text" id="cUser" placeholder="مثال: Ahdi" required/>
+              <input type="text" id="cUser" placeholder="مثال: Heo" required/>
             </div>
             <div class="field">
               <label>انتخاب کشور سرور</label>
@@ -376,7 +375,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
   const STORAGE_KEY = "ultra_wg_panel_v2_data";
   const SESSION_KEY = "ultra_wg_panel_v2_sess";
 
-  // سرور واقعی ارائه شده توسط کاربر
   const SERVER_CONFIG = {
     publicKey: "f9evqsqa8cawDQNTjQkU7vta415caGpye3YSH8zX+Sw=",
     endpoint: "212.108.97.58:59621",
@@ -414,7 +412,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     }
   }
 
-  // سیستم لینک ساب بدون نیاز به بک‌اند (با استفاده از Base64 ایمن در URL)
   function checkPublicSubRoute() {
     const params = new URLSearchParams(window.location.search);
     const subData = params.get("sub");
@@ -485,10 +482,10 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     ].join("\n");
   }
 
-  // دانلود فایل دقیقاً با پسوند .conf و بدون .txt
+  // اصلاح قطعی پسوند فایل: جلوگیری از ایجاد پسوند txt اضافه
   function downloadConfFile(text, userName) {
     const safeName = String(userName || "config").replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_");
-    const fullName = safeName + ".conf";
+    const fullName = safeName.endsWith(".conf") ? safeName : safeName + ".conf";
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -506,7 +503,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     return `${base}?sub=${payload}`;
   }
 
-  // لاگین
   document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const u = document.getElementById("loginUser").value.trim();
@@ -546,7 +542,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     location.reload();
   });
 
-  // منوی همبرگری موبایل
   const sidebar = document.getElementById("sidebar");
   const backdrop = document.getElementById("sideBackdrop");
   document.getElementById("btnToggleMenu").addEventListener("click", () => {
@@ -569,7 +564,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     btn.addEventListener("click", () => navTo(btn.dataset.sec));
   });
 
-  // ساخت کانفیگ با کنترل جلوگیری از اجرای چندباره
   let isCreating = false;
   document.getElementById("createCfgForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -587,7 +581,7 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
 
     try {
       const keys = generateWgKeys();
-      const ipNum = Math.floor(1 + Math.random() * 10); // آی‌پی تصادفی بین 1 تا 10
+      const ipNum = Math.floor(1 + Math.random() * 10);
       const now = new Date();
       const exp = new Date(now.getTime() + days * 86400000);
 
@@ -622,7 +616,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     }
   });
 
-  // رندر جدول کانفیگ‌ها
   function renderConfigs() {
     const tbody = document.getElementById("configsTbody");
     if (!DB.configs.length) {
@@ -678,7 +671,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     }
   };
 
-  // مدیریت ادمین‌ها
   document.getElementById("addAdminForm").addEventListener("submit", (e) => {
     e.preventDefault();
     DB.admins.push({
@@ -714,7 +706,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     saveDB(); renderAdmins(); toast("🗑️ حذف شد");
   };
 
-  // تنظیمات
   document.getElementById("settingsForm").addEventListener("submit", (e) => {
     e.preventDefault();
     DB.settings.baseUrl = document.getElementById("setBaseUrl").value.trim();
@@ -739,7 +730,6 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     }
   }
 
-  // اجرای اولیه
   (function boot(){
     initDB();
     if (checkPublicSubRoute()) return;
