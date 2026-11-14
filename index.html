@@ -394,11 +394,11 @@ tr:hover td{background:#f8fafc}
           <div class="form-grid">
             <div class="field">
               <label>نام کاربر *</label>
-              <input type="text" id="cUser" placeholder="مثال: علی رضایی" required/>
+              <input type="text" id="cUser" placeholder="مثال: Ahdi" required/>
             </div>
             <div class="field">
-              <label>نام کانفیگ *</label>
-              <input type="text" id="cTitle" placeholder="مثال: VIP-Game-1" required/>
+              <label>شماره / پسوند کانفیگ *</label>
+              <input type="text" id="cTitle" placeholder="مثال: 20 (برای Ahdi-20)" required/>
             </div>
             <div class="field">
               <label>انتخاب کشور سرور</label>
@@ -425,13 +425,9 @@ tr:hover td{background:#f8fafc}
               <label>مدت اعتبار (۱ تا ۳۶۵ روز)</label>
               <input type="number" id="cDays" min="1" max="365" value="30" required/>
             </div>
-            <div class="field">
-              <label>تعداد ساخت هم‌زمان (۱ تا ۲۰ عدد)</label>
-              <input type="number" id="cCount" min="1" max="20" value="1" required/>
-            </div>
           </div>
           <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
-            <button type="submit" class="btn btn-navy" style="padding:11px 22px">✨ تولید و ثبت کانفیگ</button>
+            <button type="submit" id="btnSubmitCfg" class="btn btn-navy" style="padding:11px 22px">✨ تولید و ثبت کانفیگ</button>
           </div>
         </form>
       </div>
@@ -644,14 +640,12 @@ tr:hover td{background:#f8fafc}
   const STORAGE_KEY = "ultra_wg_panel_v1_data";
   const SESSION_KEY = "ultra_wg_panel_v1_session";
 
-  // رمزنگاری/هش استاندارد SHA-256 برای نگهداری رمزها
   async function sha256(str) {
     const buf = new TextEncoder().encode(str);
     const hash = await crypto.subtle.digest("SHA-256", buf);
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
   }
 
-  // تولید کلیدهای استاندارد 32 بایتی Curve25519 (WireGuard Keypair)
   function generateWireGuardKeys() {
     const priv = new Uint8Array(32);
     crypto.getRandomValues(priv);
@@ -731,7 +725,6 @@ tr:hover td{background:#f8fafc}
     }
   }
 
-  // بررسی لینک عمومی ساب در URL
   function checkPublicSubRoute() {
     const params = new URLSearchParams(window.location.search);
     const subToken = params.get("sub");
@@ -773,7 +766,7 @@ tr:hover td{background:#f8fafc}
         const qrEl = document.getElementById("pubQr");
         qrEl.innerHTML = "";
         new QRCode(qrEl, { text: confStr, width: 190, height: 190 });
-        document.getElementById("pubBtnDl").onclick = () => downloadText(confStr, cfg.title + ".conf");
+        document.getElementById("pubBtnDl").onclick = () => downloadConfFile(confStr, cfg.title);
         document.getElementById("pubBtnCopy").onclick = () => copyText(confStr);
       } else {
         document.getElementById("pubConfText").textContent = "⛔ این اشتراک غیرفعال یا منقضی شده است.";
@@ -786,7 +779,7 @@ tr:hover td{background:#f8fafc}
       document.getElementById("pubDetails").innerHTML = `<div class="pub-row"><span>تعداد کانفیگ‌ها</span><span>${list.length} عدد</span></div>`;
       const combined = list.filter(isConfigActive).map(c => buildConfFile(c)).join("\n# -------------------------\n");
       document.getElementById("pubConfText").textContent = combined || "کانفیگ فعالی موجود نیست.";
-      document.getElementById("pubBtnDl").onclick = () => downloadText(combined, "WireGuard_Group.conf");
+      document.getElementById("pubBtnDl").onclick = () => downloadConfFile(combined, "WireGuard_Group");
       document.getElementById("pubBtnCopy").onclick = () => copyText(combined);
     }
     return true;
@@ -796,7 +789,6 @@ tr:hover td{background:#f8fafc}
     window.location.href = window.location.pathname;
   });
 
-  // ورود به سیستم
   document.getElementById("togglePass").addEventListener("click", () => {
     const inp = document.getElementById("loginPass");
     inp.type = inp.type === "password" ? "text" : "password";
@@ -858,7 +850,6 @@ tr:hover td{background:#f8fafc}
     location.reload();
   });
 
-  // سایدبار و منوی همبرگری
   const sidebar = document.getElementById("sidebar");
   const backdrop = document.getElementById("sideBackdrop");
   const mainContent = document.getElementById("mainContent");
@@ -890,7 +881,6 @@ tr:hover td{background:#f8fafc}
     btn.addEventListener("click", () => navTo(btn.dataset.sec));
   });
 
-  // توابع کمکی کانفیگ و IP
   function esc(s) {
     return String(s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
@@ -939,31 +929,53 @@ tr:hover td{background:#f8fafc}
     return DB.configs.filter(c => c.creatorId === CURRENT_USER.id);
   }
 
-  // ساخت کانفیگ
+  // اصلاح اساسی دانلود فایل: استفاده از MIME دقیق text/plain و نام‌گذاری استاندارد بدون txt
+  function downloadConfFile(text, baseName) {
+    const safeName = String(baseName || "wg-config").replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_");
+    const fullName = safeName.endsWith(".conf") ? safeName : safeName + ".conf";
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fullName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // جلوگیری از اجرای چندباره و غیرفعال‌سازی موقت دکمه ساخت کانفیگ
+  let isCreatingConfig = false;
   document.getElementById("createCfgForm").addEventListener("submit", (e) => {
     e.preventDefault();
+    if (isCreatingConfig) return;
+
     const userName = document.getElementById("cUser").value.trim();
-    const baseTitle = document.getElementById("cTitle").value.trim();
+    const titleExt = document.getElementById("cTitle").value.trim();
     const country = document.getElementById("cCountry").value;
     const serverId = document.getElementById("cServer").value;
     const volumeGB = parseInt(document.getElementById("cVolume").value, 10);
     const days = parseInt(document.getElementById("cDays").value, 10);
-    const count = parseInt(document.getElementById("cCount").value, 10) || 1;
 
     const srv = DB.servers.find(s => s.id === serverId);
     if (!srv) { toast("❌ لطفاً یک سرور معتبر انتخاب کنید"); return; }
 
-    for (let i = 1; i <= count; i++) {
+    isCreatingConfig = true;
+    const submitBtn = document.getElementById("btnSubmitCfg");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "در حال ساخت و دانلود...";
+
+    try {
       const keys = generateWireGuardKeys();
       const ip = allocateUniqueIP();
-      const title = count > 1 ? `${baseTitle}-${i}` : baseTitle;
+      const fullTitle = `${userName}-${titleExt}`;
       const now = new Date();
       const exp = new Date(now.getTime() + days * 86400000);
 
-      DB.configs.unshift({
+      const newCfg = {
         id: "cfg_" + genToken(6),
         userName,
-        title,
+        title: fullTitle,
         country,
         serverId: srv.id,
         serverName: srv.name,
@@ -979,17 +991,27 @@ tr:hover td{background:#f8fafc}
         creatorName: CURRENT_USER.name,
         createdAt: now.toISOString(),
         expiresAt: exp.toISOString()
-      });
-    }
+      };
 
-    addLog(`${count} کانفیگ جدید برای «${userName}» ساخته شد`);
-    saveDB();
-    document.getElementById("createCfgForm").reset();
-    toast(`✅ ${count} کانفیگ با موفقیت ساخته شد`);
-    navTo("configs");
+      DB.configs.unshift(newCfg);
+      addLog(`ساخت تک‌کانفیگ برای «${userName}» (${fullTitle})`);
+      saveDB();
+
+      const confText = buildConfFile(newCfg);
+      downloadConfFile(confText, fullTitle);
+
+      document.getElementById("createCfgForm").reset();
+      toast("✅ کانفیگ با موفقیت ساخته و دانلود شد");
+      navTo("configs");
+    } finally {
+      setTimeout(() => {
+        isCreatingConfig = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "✨ تولید و ثبت کانفیگ";
+      }, 600);
+    }
   });
 
-  // رندر داشبورد
   function renderDashboard() {
     const visible = getVisibleConfigs();
     const activeCount = visible.filter(isConfigActive).length;
@@ -1008,7 +1030,6 @@ tr:hover td{background:#f8fafc}
       <div class="stat-card"><div class="stat-icon ic-green">🔋</div><div class="stat-info"><span>حجم باقی‌مانده</span><strong>${remVol} GB</strong></div></div>
     `;
 
-    // نمودار مصرف سرورها
     const barsEl = document.getElementById("serverUsageBars");
     barsEl.innerHTML = DB.servers.map(srv => {
       const srvVol = DB.configs.filter(c => c.serverId === srv.id).reduce((s, c) => s + c.volumeGB, 0);
@@ -1021,7 +1042,6 @@ tr:hover td{background:#f8fafc}
       `;
     }).join("");
 
-    // وضعیت سرورها
     document.getElementById("dashServerStatus").innerHTML = DB.servers.map(srv => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.86rem">
         <span><strong>${esc(srv.name)}</strong> (${esc(srv.country)})</span>
@@ -1029,7 +1049,6 @@ tr:hover td{background:#f8fafc}
       </div>
     `).join("");
 
-    // آخرین کانفیگ‌ها
     const rec = visible.slice(0, 5);
     document.getElementById("dashRecentConfigs").innerHTML = rec.length ? rec.map(c => `
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.84rem">
@@ -1038,7 +1057,6 @@ tr:hover td{background:#f8fafc}
       </div>
     `).join("") : "<p style='color:var(--muted);font-size:0.84rem'>کانفیگی ثبت نشده است.</p>";
 
-    // آخرین فعالیت‌ها
     document.getElementById("dashLogs").innerHTML = DB.logs.slice(0, 6).map(l => `
       <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
         <span>${esc(l.text)}</span>
@@ -1047,7 +1065,6 @@ tr:hover td{background:#f8fafc}
     `).join("");
   }
 
-  // رندر لیست کانفیگ‌ها
   function renderConfigsTable() {
     const q = document.getElementById("fSearch").value.trim().toLowerCase();
     const fc = document.getElementById("fCountry").value;
@@ -1108,7 +1125,7 @@ tr:hover td{background:#f8fafc}
     const c = DB.configs[idx];
 
     if (type === "dl") {
-      downloadText(buildConfFile(c), `${c.title}.conf`);
+      downloadConfFile(buildConfFile(c), c.title);
       toast("⬇️ فایل کانفیگ دانلود شد");
     } else if (type === "copyConf") {
       copyText(buildConfFile(c));
@@ -1166,7 +1183,6 @@ tr:hover td{background:#f8fafc}
     }
   };
 
-  // رندر سیستم لینک ساب
   function renderSubsSection() {
     const visible = getVisibleConfigs();
     const box = document.getElementById("individualSubsList");
@@ -1207,7 +1223,6 @@ tr:hover td{background:#f8fafc}
     copyText(all);
   });
 
-  // مدیریت ادمین‌ها (مالک)
   document.getElementById("addAdminForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("aName").value.trim();
@@ -1295,7 +1310,6 @@ tr:hover td{background:#f8fafc}
     }
   };
 
-  // مدیریت سرورها
   document.getElementById("addServerForm").addEventListener("submit", (e) => {
     e.preventDefault();
     DB.servers.push({
@@ -1356,7 +1370,6 @@ tr:hover td{background:#f8fafc}
     }
   };
 
-  // تنظیمات اصلی و پشتیبان‌گیری
   function renderSettings() {
     document.getElementById("setOwnerTitle").value = DB.settings.ownerTitle;
     document.getElementById("setOwnerUser").value = DB.settings.ownerUser;
@@ -1382,7 +1395,15 @@ tr:hover td{background:#f8fafc}
   });
 
   document.getElementById("btnBackup").addEventListener("click", () => {
-    downloadText(JSON.stringify(DB, null, 2), `ULTRA_WG_BACKUP_${new Date().toISOString().slice(0,10)}.json`);
+    const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ULTRA_WG_BACKUP_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast("⬇️ فایل پشتیبان دانلود شد");
   });
 
@@ -1415,7 +1436,6 @@ tr:hover td{background:#f8fafc}
     }
   });
 
-  // مودال و ابزارهای عمومی
   window.openModal = function(title, html) {
     document.getElementById("modalTitle").innerHTML = title;
     document.getElementById("modalBody").innerHTML = html;
@@ -1427,14 +1447,6 @@ tr:hover td{background:#f8fafc}
   window.copyText = function(text) {
     navigator.clipboard.writeText(text).then(() => toast("✅ در حافظه کپی شد")).catch(() => toast("❌ خطا در کپی"));
   };
-  function downloadText(text, filename) {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([text], {type: "text/plain;charset=utf-8"}));
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
 
   function renderAll() {
     renderDashboard();
@@ -1447,7 +1459,6 @@ tr:hover td{background:#f8fafc}
     }
   }
 
-  // شروع برنامه
   (async function boot() {
     await initDB();
     if (checkPublicSubRoute()) return;
