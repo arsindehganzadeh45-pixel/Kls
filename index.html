@@ -175,7 +175,7 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
   font-family:monospace;font-size:0.75rem;direction:ltr;text-align:left;
   white-space:pre-wrap;word-break:break-all;margin:10px 0;
 }
-#qrBox{display:flex;justify-content:center;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin:10px 0}
+#qrBox{display:flex;justify-content:center;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin:12px 0}
 
 .toast{
   position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
@@ -372,8 +372,8 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
 
 <script>
 (function(){
-  const STORAGE_KEY = "ultra_wg_panel_v2_data";
-  const SESSION_KEY = "ultra_wg_panel_v2_sess";
+  const STORAGE_KEY = "ultra_wg_panel_v3_data";
+  const SESSION_KEY = "ultra_wg_panel_v3_sess";
 
   const SERVER_CONFIG = {
     publicKey: "f9evqsqa8cawDQNTjQkU7vta415caGpye3YSH8zX+Sw=",
@@ -482,11 +482,11 @@ td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
     ].join("\n");
   }
 
-  // اصلاح قطعی پسوند فایل: جلوگیری از ایجاد پسوند txt اضافه
+  // اصلاح صددرصدی پسوند فایل برای جلوگیری از اضافه شدن .txt در موبایل
   function downloadConfFile(text, userName) {
     const safeName = String(userName || "config").replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, "_");
     const fullName = safeName.endsWith(".conf") ? safeName : safeName + ".conf";
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([text], { type: "application/x-wg-config" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
